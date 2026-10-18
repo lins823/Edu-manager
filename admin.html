@@ -1,0 +1,134 @@
+{% extends "base.html" %}{% block title %}Admin{% endblock %}
+{% block content %}
+<div class="row jb mb2"><div><div class="ptitle">⚙️ Administration</div><div class="ts tm mt1">Full system control</div></div></div>
+<div class="stats">
+  <div class="stat"><div class="sic ic-n">👥</div><div><div class="sv">{{ users|length }}</div><div class="sl">Users</div></div></div>
+  <div class="stat"><div class="sic ic-g">📅</div><div><div class="sv">{{ terms|length }}</div><div class="sl">Terms</div><div class="ss">{% for t in terms %}{% if t.is_current %}Current: {{t.name}}{% endif %}{% endfor %}</div></div></div>
+  <div class="stat"><div class="sic ic-gr">🏫</div><div><div class="sv">{{ classes|selectattr('sid')|list|length }}</div><div class="sl">Streams</div></div></div>
+  <div class="stat"><div class="sic ic-b">🏠</div><div><div class="sv">{{ hostels|length }}</div><div class="sl">Hostels</div></div></div>
+</div>
+<div class="tabs">
+  <button class="tab on" data-t="t-users">👥 Users</button>
+  <button class="tab" data-t="t-terms">📅 Terms</button>
+  <button class="tab" data-t="t-classes">🏫 Classes</button>
+  <button class="tab" data-t="t-hostels">🏠 Hostels</button>
+  <button class="tab" data-t="t-brand">🎨 Branding</button>
+  <button class="tab" data-t="t-reset">🔑 Passwords</button>
+</div>
+<div>
+<div class="pane on" id="t-users">
+  <div class="g2">
+    <div class="card">
+      <div class="stitle mb2">➕ Create User</div>
+      <form method="POST" action="{{ url_for('admin_create_user') }}">
+        <div class="g2"><div class="fg"><label>Username *</label><input name="username" required placeholder="username"></div>
+        <div class="fg"><label>Password *</label><div class="pw"><input name="password" type="password" required placeholder="password"><button type="button" class="pwt">👁</button></div></div>
+        <div class="fg"><label>Role *</label><select name="role_id" required>{% for r in roles %}<option value="{{r.id}}">{{r.name.replace('_',' ').title()}}</option>{% endfor %}</select></div>
+        <div class="fg"><label>First Name</label><input name="first_name" placeholder="First"></div>
+        <div class="fg"><label>Last Name</label><input name="last_name" placeholder="Last"></div>
+        <div class="fg"><label>Email</label><input name="email" type="email" placeholder="email@school.ac"></div>
+        <div class="fg"><label>Phone</label><input name="phone" placeholder="+254…"></div>
+        <div class="fg"><label>Relationship (Parent)</label><select name="relationship"><option value="father">Father</option><option value="mother">Mother</option><option value="guardian">Guardian</option></select></div>
+        </div>
+        <button class="btn bn bw mt1" type="submit">Create Account</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="stitle mb2">👥 All Users</div>
+      <div class="tw"><table><thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th></tr></thead>
+      <tbody>{% for u in users %}<tr><td><strong>{{u.username}}</strong></td><td><span class="bx bx-navy">{{u.role_name.replace('_',' ')}}</span></td>
+      <td>{% if u.is_active %}<span class="bx bx-active">Active</span>{% else %}<span class="bx bx-inactive">Inactive</span>{% endif %}</td>
+      <td class="ts tm">{{u.last_login[:10] if u.last_login else '—'}}</td></tr>
+      {% else %}<tr><td colspan="4" class="tc tm" style="padding:1.5rem">No users</td></tr>{% endfor %}
+      </tbody></table></div>
+    </div>
+  </div>
+</div>
+<div class="pane" id="t-terms">
+  <div class="g2">
+    <div class="card">
+      <div class="stitle mb2">📅 Create Term</div>
+      <form method="POST" action="{{ url_for('admin_create_term') }}">
+        <div class="fg"><label>Term Name *</label><input name="name" required placeholder="e.g. Term 2 2025"></div>
+        <div class="fg"><label>Academic Year *</label><input name="academic_year" required placeholder="2025"></div>
+        <div class="fg"><label>Opening Date *</label><input name="opening_date" type="date" required></div>
+        <div class="g2"><div class="fg"><label>Start Date *</label><input name="start_date" type="date" required></div>
+        <div class="fg"><label>End Date *</label><input name="end_date" type="date" required></div></div>
+        <button class="btn bg bw mt1" type="submit">Create &amp; Set Current</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="stitle mb2">📋 Terms</div>
+      <div class="tw"><table><thead><tr><th>Name</th><th>Year</th><th>Opening</th><th>End</th><th>Status</th></tr></thead>
+      <tbody>{% for t in terms %}<tr><td><strong>{{t.name}}</strong></td><td>{{t.academic_year}}</td>
+      <td class="ts">{{t.opening_date}}</td><td class="ts">{{t.end_date}}</td>
+      <td>{% if t.is_current %}<span class="bx bx-active">Current</span>{% else %}<span class="bx bx-inactive">Past</span>{% endif %}</td></tr>
+      {% else %}<tr><td colspan="5" class="tc tm" style="padding:1.5rem">No terms</td></tr>{% endfor %}</tbody></table></div>
+    </div>
+  </div>
+</div>
+<div class="pane" id="t-classes">
+  <div class="g2">
+    <div class="card">
+      <div class="stitle mb2">🏫 Create Class / Stream</div>
+      <form method="POST" action="{{ url_for('admin_create_class') }}">
+        <div class="fg"><label>Class Name *</label><input name="class_name" required placeholder="e.g. Form 1"></div>
+        <div class="fg"><label>Level</label><input name="level" type="number" placeholder="1"></div>
+        <div class="fg"><label>Stream Name *</label><input name="stream_name" required placeholder="e.g. A"></div>
+        <div class="fg"><label>Assign Class Teacher</label><select name="teacher_id"><option value="">— None —</option>{% for t in teachers %}<option value="{{t.id}}">{{t.name}}</option>{% endfor %}</select></div>
+        <button class="btn bn bw mt1" type="submit">Create</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="stitle mb2">📋 Classes &amp; Streams</div>
+      <div class="tw"><table><thead><tr><th>Class</th><th>Stream</th><th>Teacher</th></tr></thead>
+      <tbody>{% for c in classes %}<tr><td><strong>{{c.cname}}</strong></td><td>{{c.sname or '—'}}</td><td class="ts">{{c.teacher_name or '—'}}</td></tr>
+      {% else %}<tr><td colspan="3" class="tc tm" style="padding:1.5rem">No classes</td></tr>{% endfor %}</tbody></table></div>
+    </div>
+  </div>
+</div>
+<div class="pane" id="t-hostels">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+    {% for h in hostels %}
+    <div class="card">
+      <div class="row jb mb1"><div><div class="fw6">{{h.name}}</div><div class="ts tm">{{ '♂ Boys' if h.gender=='male' else '♀ Girls' }}</div></div>
+      <span class="bx {{ 'bx-active' if h.current_occupancy < h.capacity else 'bx-inactive' }}">{{ h.capacity-h.current_occupancy }} free</span></div>
+      <div class="pr mt1"><div class="prb" data-v="{{ (h.current_occupancy/h.capacity*100)|round(1) if h.capacity else 0 }}"></div></div>
+      <div class="row jb ts tm mt1"><span>{{h.current_occupancy}} occupied</span><span>{{h.capacity}} total</span></div>
+    </div>
+    {% else %}<div class="empty"><div class="ei">🏠</div><p>No hostels</p></div>{% endfor %}
+  </div>
+</div>
+<div class="pane" id="t-brand">
+  <div class="g2">
+    <div class="card">
+      <div class="stitle mb2">🎨 Update Branding</div>
+      <form method="POST" action="{{ url_for('admin_branding') }}" enctype="multipart/form-data">
+        <div class="fg"><label>School Name *</label><input name="school_name" value="{{ settings.school_name }}" required></div>
+        <div class="fg"><label>School Motto</label><input name="school_motto" value="{{ settings.school_motto }}" placeholder="Knowledge is Power"></div>
+        <div class="fg"><label>Logo (PNG/JPG/GIF, max 2MB)</label>
+          <input type="file" name="logo" accept=".png,.jpg,.jpeg,.gif" style="padding:.4rem">
+        </div>
+        <button class="btn bg bw mt1" type="submit">💾 Save Branding</button>
+      </form>
+    </div>
+    <div class="card" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;text-align:center">
+      {% if settings.logo_path %}<img src="/{{ settings.logo_path }}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--gold)">{% else %}
+      <div style="width:100px;height:100px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:1.8rem;color:var(--navy);font-weight:700">EA</div>{% endif %}
+      <div style="font-family:var(--fh);font-size:1.2rem;font-weight:700">{{ settings.school_name }}</div>
+      <div style="font-style:italic;color:var(--gold);font-size:.9rem">{{ settings.school_motto }}</div>
+    </div>
+  </div>
+</div>
+<div class="pane" id="t-reset">
+  <div class="card" style="max-width:460px">
+    <div class="stitle mb2">🔑 Reset User Password</div>
+    <form method="POST" action="{{ url_for('admin_reset_pw') }}">
+      <div class="fg"><label>Select User *</label><select name="user_id" required><option value="">— Choose —</option>{% for u in users %}<option value="{{u.id}}">{{u.username}} ({{u.role_name}})</option>{% endfor %}</select></div>
+      <div class="fg"><label>New Password *</label><div class="pw"><input name="new_password" type="password" required placeholder="New password"><button type="button" class="pwt">👁</button></div></div>
+      <button class="btn bd_ bw mt1" type="submit">Reset Password</button>
+    </form>
+  </div>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}{% block title %}Deputy Principal{% endblock %}
+{% block content %}
+<div class="row jb mb2">
+  <div><div class="ptitle">⚠️ Deputy Principal</div><div class="ts tm mt1">Discipline management</div></div>
+  <form class="row g1" action="{{ url_for('deputy_dash') }}" method="GET">
+    <input name="q" placeholder="Search student…" value="{{ request.args.get('q','') }}" style="width:200px">
+    <button class="btn bn sm" type="submit">🔍 Search</button>
+  </form>
+</div>
+{% if search is not none %}
+<div class="card mb2">
+  <div class="stitle mb2">🔍 Results</div>
+  <div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Class</th><th>Status</th></tr></thead>
+  <tbody>{% for s in search %}<tr><td><strong>{{s.admission_number}}</strong></td><td>{{s.first_name}} {{s.last_name}}</td><td class="ts">{{s.cls or '—'}}</td><td><span class="bx bx-{{s.status}}">{{s.status}}</span></td></tr>
+  {% else %}<tr><td colspan="4" class="tc tm" style="padding:1.5rem">No results</td></tr>{% endfor %}</tbody></table></div>
+</div>{% endif %}
+<div class="stats">
+  <div class="stat"><div class="sic ic-n">👨‍🎓</div><div><div class="sv">{{ students|length }}</div><div class="sl">Students</div></div></div>
+  <div class="stat"><div class="sic ic-r">⚠️</div><div><div class="sv">{{ records|length }}</div><div class="sl">Discipline Records</div></div></div>
+  <div class="stat"><div class="sic ic-g">🚫</div><div><div class="sv">{{ suspended|length }}</div><div class="sl">Suspended</div></div></div>
+  <div class="stat"><div class="sic ic-gr">✅</div><div><div class="sv">{{ students|selectattr('status','equalto','active')|list|length }}</div><div class="sl">Active</div></div></div>
+</div>
+<div class="tabs">
+  <button class="tab on" data-t="d-add">➕ Add Record</button>
+  <button class="tab" data-t="d-rec">📋 Records</button>
+  <button class="tab" data-t="d-sus">🚫 Suspended</button>
+  <button class="tab" data-t="d-all">👥 All Students</button>
+</div>
+<div>
+<div class="pane on" id="d-add">
+  <div class="card" style="max-width:640px">
+    <div class="stitle mb2">➕ New Discipline Record</div>
+    <div class="al al-info mb2"><span>ℹ️</span> A student with <strong>3 or more</strong> offences in a term is automatically suspended.</div>
+    <form method="POST" action="{{ url_for('deputy_add_disc') }}">
+      <div class="g2">
+        <div class="fg full"><label>Student *</label><select name="student_id" required><option value="">— Select student —</option>{% for s in students %}<option value="{{s.id}}">{{s.admission_number}} — {{s.first_name}} {{s.last_name}} ({{s.cls or 'No class'}}){% if s.status=='suspended' %} 🚫{% endif %}</option>{% endfor %}</select></div>
+        <div class="fg"><label>Offense *</label><select name="offense" required><option value="">— Select —</option>{% for o in ['Absenteeism','Bullying','Cheating','Disrespect to staff','Drug/substance abuse','Fighting','Late coming','Destruction of property','Noise making','Other'] %}<option>{{o}}</option>{% endfor %}</select></div>
+        <div class="fg"><label>Severity</label><select name="severity"><option value="minor">Minor</option><option value="major">Major</option><option value="severe">Severe</option></select></div>
+        <div class="fg full"><label>Description</label><textarea name="description" placeholder="Describe what happened…"></textarea></div>
+        <div class="fg full"><label>Action Taken</label><textarea name="action_taken" placeholder="e.g. Verbal warning, Parent called…"></textarea></div>
+      </div>
+      <button class="btn bd_ mt1" type="submit">⚠️ Submit Record</button>
+    </form>
+  </div>
+</div>
+<div class="pane" id="d-rec">
+  <div class="card">
+    <div class="stitle mb2">📋 Discipline Records</div>
+    {% if records %}<div class="tw"><table><thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Offense</th><th>Severity</th><th>Action</th></tr></thead>
+    <tbody>{% for r in records %}<tr><td class="ts">{{r.report_date}}</td><td><strong>{{r.sname}}</strong><br><span class="tx tm">{{r.admission_number}}</span></td>
+    <td class="ts">{{r.cls or '—'}}</td><td>{{r.offense}}</td>
+    <td><span class="bx {{ 'bx-inactive' if r.severity=='minor' else ('bx-gold' if r.severity=='major' else 'bx-expelled') }}">{{r.severity or '—'}}</span></td>
+    <td class="ts">{{r.action_taken or '—'}}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<div class="empty"><div class="ei">✅</div><p>No discipline records this term</p></div>{% endif %}
+  </div>
+</div>
+<div class="pane" id="d-sus">
+  <div class="card">
+    <div class="stitle mb2">🚫 Suspended Students</div>
+    {% if suspended %}
+    <div class="warn mb2">🚫 {{suspended|length}} student(s) suspended. Only the Principal can reactivate.</div>
+    <div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Class</th><th>Status</th></tr></thead>
+    <tbody>{% for s in suspended %}<tr><td><strong>{{s.admission_number}}</strong></td><td>{{s.first_name}} {{s.last_name}}</td><td class="ts">{{s.cls or '—'}}</td><td><span class="bx bx-suspended">Suspended</span></td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<div class="empty"><div class="ei">🎉</div><p>No suspended students</p></div>{% endif %}
+  </div>
+</div>
+<div class="pane" id="d-all">
+  <div class="card">
+    <div class="stitle mb2">👥 All Students (Read-Only)</div>
+    <div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Class</th><th>Gender</th><th>Status</th></tr></thead>
+    <tbody>{% for s in students %}<tr><td><strong>{{s.admission_number}}</strong></td><td>{{s.first_name}} {{s.last_name}}</td><td class="ts">{{s.cls or '—'}}</td><td>{{s.gender|title}}</td><td><span class="bx bx-{{s.status}}">{{s.status}}</span></td></tr>
+    {% else %}<tr><td colspan="5" class="tc tm" style="padding:2rem">No students</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+</div>
+{% endblock %}

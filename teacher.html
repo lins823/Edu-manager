@@ -1,0 +1,141 @@
+{% extends "base.html" %}{% block title %}Teacher{% endblock %}
+{% block content %}
+<div class="row jb mb2">
+  <div>
+    <div class="ptitle">🏫 {% if stream %}{{ stream['cls'] }}{% else %}Teacher Dashboard{% endif %}</div>
+    <div class="ts tm mt1">{% if stream %}{{ students|length }} students{% else %}No class assigned yet{% endif %}</div>
+  </div>
+  {% if stream %}
+  <form class="row g1" action="{{ url_for('teacher_dash') }}" method="GET">
+    <input name="q" placeholder="Search in my class…" value="{{ request.args.get('q','') }}" style="width:200px">
+    <button class="btn bn sm" type="submit">🔍</button>
+  </form>{% endif %}
+</div>
+{% if not stream %}<div class="al al-warning"><span>⚠️</span>You have not been assigned a class. Contact Admin.</div>{% endif %}
+{% if search is not none %}
+<div class="card mb2"><div class="stitle mb2">🔍 Results</div>
+<div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Status</th></tr></thead>
+<tbody>{% for s in search %}<tr><td><strong>{{s.admission_number}}</strong></td><td>{{s.first_name}} {{s.last_name}}</td><td><span class="bx bx-{{s.status}}">{{s.status}}</span></td></tr>{% else %}<tr><td colspan="3" class="tc tm" style="padding:1.5rem">No results</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+<div class="stats">
+  <div class="stat"><div class="sic ic-n">👨‍🎓</div><div><div class="sv">{{ students|length }}</div><div class="sl">My Students</div></div></div>
+  <div class="stat"><div class="sic ic-gr">✅</div><div><div class="sv">{{ students|selectattr('status','equalto','active')|list|length }}</div><div class="sl">Active</div></div></div>
+  <div class="stat"><div class="sic ic-g">📝</div><div><div class="sv">{{ exams|length }}</div><div class="sl">Exams</div></div></div>
+  <div class="stat"><div class="sic ic-b">📋</div><div><div class="sv">{{ reqs|length }}</div><div class="sl">My Requests</div></div></div>
+</div>
+<div class="tabs">
+  <button class="tab on" data-t="t-cls">👥 Class List</button>
+  <button class="tab" data-t="t-att">✅ Attendance</button>
+  <button class="tab" data-t="t-mk">📝 Marks</button>
+  <button class="tab" data-t="t-fee">💵 Fees</button>
+  <button class="tab" data-t="t-req">📋 Requests</button>
+</div>
+<div>
+<div class="pane on" id="t-cls">
+  <div class="card">
+    <div class="card-hd">
+      <div class="stitle" style="border:none;padding:0;margin:0">👥 Class Register</div>
+      <div class="row g1">
+        <button class="btn bs sm" data-m="m-add">➕ Request Add</button>
+        <button class="btn bd_ sm" data-m="m-rem">➖ Request Remove</button>
+      </div>
+    </div>
+    {% if students %}<div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Gender</th><th>DOB</th><th>Hostel</th><th>Status</th><th>Health</th></tr></thead>
+    <tbody>{% for s in students %}<tr>
+    <td><strong>{{s.admission_number}}</strong></td>
+    <td>{{s.first_name}} {{s.last_name}}{% if s.status=='suspended' %}<br><span class="bx bx-suspended tx">🚫 Suspended</span>{% endif %}</td>
+    <td>{{s.gender|title}}</td><td class="ts">{{s.date_of_birth or '—'}}</td>
+    <td class="ts">{{s.hostel or '—'}}</td>
+    <td><span class="bx bx-{{s.status}}">{{s.status}}</span></td>
+    <td>{% if s.health_condition %}<span class="bx bx-pending" title="{{s.health_condition}}">⚕️</span>{% endif %}{% if s.special_diet %}<span class="bx bx-gold" title="{{s.special_diet}}">🍽</span>{% endif %}{% if not s.health_condition and not s.special_diet %}—{% endif %}</td>
+    </tr>{% endfor %}</tbody></table></div>
+    {% else %}<div class="empty"><div class="ei">👥</div><p>No students in your class</p></div>{% endif %}
+  </div>
+</div>
+<div class="pane" id="t-att">
+  <div class="card" style="max-width:700px">
+    <div class="stitle mb2">✅ Mark Attendance</div>
+    <form method="POST" action="{{ url_for('teacher_attendance') }}">
+      <div class="fg mb2" style="max-width:200px"><label>Date *</label><input name="att_date" type="date" value="{{ today }}" required></div>
+      {% if students %}
+      <div class="tw"><table><thead><tr><th>#</th><th>Student</th><th>Status</th></tr></thead>
+      <tbody>{% for s in students %}<tr><td>{{loop.index}}</td>
+      <td><strong>{{s.first_name}} {{s.last_name}}</strong><br><span class="tx tm">{{s.admission_number}}</span>
+      <input type="hidden" name="sids" value="{{s.id}}"></td>
+      <td><select name="statuses" style="width:130px"><option value="present">✅ Present</option><option value="absent">❌ Absent</option><option value="late">⏰ Late</option><option value="excused">📄 Excused</option></select></td>
+      </tr>{% endfor %}</tbody></table></div>
+      <button class="btn bs mt2" type="submit">✅ Save Attendance</button>
+      {% else %}<div class="empty"><div class="ei">👥</div><p>No students</p></div>{% endif %}
+    </form>
+  </div>
+</div>
+<div class="pane" id="t-mk">
+  <div class="card">
+    <div class="card-hd">
+      <div class="stitle" style="border:none;padding:0;margin:0">📝 Exam Marks</div>
+      <button class="btn bn sm" data-m="m-exam">+ New Exam</button>
+    </div>
+    {% if exams %}
+    <form method="POST" action="{{ url_for('teacher_save_marks') }}">
+      <div class="fg mb2" style="max-width:280px"><label>Select Exam *</label>
+      <select name="exam_id" required><option value="">— Choose exam —</option>{% for e in exams %}<option value="{{e.id}}">{{e.name}} ({{e.subject}})</option>{% endfor %}</select></div>
+      <div class="tw"><table><thead><tr><th>#</th><th>Student</th><th>Marks /100</th><th>Grade</th></tr></thead>
+      <tbody>{% for s in students %}<tr><td>{{loop.index}}</td><td><strong>{{s.first_name}} {{s.last_name}}</strong><input type="hidden" name="sids" value="{{s.id}}"></td>
+      <td><input class="mark-in" type="number" name="marks" min="0" max="100" step="0.5" placeholder="0–100" style="width:85px"></td>
+      <td><span class="bx bx-inactive auto-g">—</span></td></tr>{% endfor %}</tbody></table></div>
+      <button class="btn bn mt2" type="submit">💾 Save Marks</button>
+    </form>
+    {% else %}<div class="empty"><div class="ei">📝</div><p>No exams yet. Create one first.</p></div>{% endif %}
+    {% if results %}<div class="divider"></div>
+    <div class="stitle mb2">📊 Saved Results</div>
+    <div class="tw"><table><thead><tr><th>Student</th><th>Exam</th><th>Subject</th><th>Score</th><th>Grade</th></tr></thead>
+    <tbody>{% for r in results %}<tr><td>{{r.sname}}</td><td>{{r.ename}}</td><td>{{r.subject}}</td>
+    <td>{{r.marks_obtained}}/{{r.total_marks}}</td>
+    <td><span class="bx {{ 'bx-active' if r.grade in ['A','B'] else ('bx-gold' if r.grade=='C' else 'bx-inactive') }}">{{r.grade}}</span></td>
+    </tr>{% endfor %}</tbody></table></div>{% endif %}
+  </div>
+</div>
+<div class="pane" id="t-fee">
+  <div class="card">
+    <div class="stitle mb2">💵 Class Fee Statements</div>
+    <div class="tw"><table><thead><tr><th>Student</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+    <tbody>{% for r in fees %}<tr><td><strong>{{r.sname}}</strong><br><span class="tx tm">{{r.admission_number}}</span></td>
+    <td>{% if r.total_amount %}KES {{ "{:,.0f}".format(r.total_amount) }}{% else %}—{% endif %}</td>
+    <td class="t-g fw6">{% if r.amount_paid %}KES {{ "{:,.0f}".format(r.amount_paid) }}{% else %}—{% endif %}</td>
+    <td class="{{ 't-r' if r.balance and r.balance>0 else 't-g' }} fw6">{% if r.balance is not none %}KES {{ "{:,.0f}".format(r.balance) }}{% else %}—{% endif %}</td>
+    <td>{% if r.balance is not none %}{% if r.balance<=0 %}<span class="bx bx-active">Cleared</span>{% elif r.amount_paid and r.amount_paid>0 %}<span class="bx bx-gold">Partial</span>{% else %}<span class="bx bx-inactive">Unpaid</span>{% endif %}{% else %}—{% endif %}</td>
+    </tr>{% else %}<tr><td colspan="5" class="tc tm" style="padding:2rem">No data</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+<div class="pane" id="t-req">
+  <div class="card">
+    <div class="stitle mb2">📋 My Requests</div>
+    {% if reqs %}<div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Student</th><th>Reason</th><th>Status</th></tr></thead>
+    <tbody>{% for r in reqs %}<tr><td class="ts">{{r.request_date[:10] if r.request_date else '—'}}</td>
+    <td><span class="bx {{ 'bx-active' if r.request_type=='add' else 'bx-expelled' }}">{{r.request_type}}</span></td>
+    <td>{{r.sname or '—'}}</td><td class="ts">{{r.reason or '—'}}</td>
+    <td><span class="bx bx-{{r.status}}">{{r.status}}</span></td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<div class="empty"><div class="ei">📋</div><p>No requests submitted</p></div>{% endif %}
+  </div>
+</div>
+</div>
+<!-- MODALS -->
+<div class="mo" id="m-add"><div class="md"><div class="md-hd"><h3>Request: Add Student</h3><button class="md-x">✕</button></div>
+<form method="POST" action="{{ url_for('teacher_request') }}"><div class="md-bd">
+<input type="hidden" name="request_type" value="add">
+<div class="fg"><label>Admission Number</label><input name="student_id" placeholder="ADM2025001"></div>
+<div class="fg"><label>Reason *</label><textarea name="reason" required placeholder="Reason for adding…"></textarea></div>
+</div><div class="md-ft"><button type="button" class="btn bo" data-mc>Cancel</button><button class="btn bs" type="submit">Submit</button></div></form></div></div>
+<div class="mo" id="m-rem"><div class="md"><div class="md-hd"><h3>Request: Remove Student</h3><button class="md-x">✕</button></div>
+<form method="POST" action="{{ url_for('teacher_request') }}"><div class="md-bd">
+<input type="hidden" name="request_type" value="remove">
+<div class="fg"><label>Student *</label><select name="student_id" required><option value="">— Select —</option>{% for s in students %}<option value="{{s.id}}">{{s.admission_number}} — {{s.first_name}} {{s.last_name}}</option>{% endfor %}</select></div>
+<div class="fg"><label>Reason *</label><textarea name="reason" required placeholder="Reason for removing…"></textarea></div>
+</div><div class="md-ft"><button type="button" class="btn bo" data-mc>Cancel</button><button class="btn bd_" type="submit">Submit</button></div></form></div></div>
+<div class="mo" id="m-exam"><div class="md"><div class="md-hd"><h3>Create Exam</h3><button class="md-x">✕</button></div>
+<form method="POST" action="{{ url_for('teacher_create_exam') }}"><div class="md-bd">
+<div class="g2"><div class="fg"><label>Exam Name *</label><input name="name" required placeholder="Mid-Term 2025"></div>
+<div class="fg"><label>Subject *</label><input name="subject" required placeholder="Mathematics"></div>
+<div class="fg"><label>Total Marks</label><input name="total_marks" type="number" value="100"></div>
+<div class="fg"><label>Exam Date</label><input name="exam_date" type="date"></div></div>
+</div><div class="md-ft"><button type="button" class="btn bo" data-mc>Cancel</button><button class="btn bn" type="submit">Create</button></div></form></div></div>
+{% endblock %}

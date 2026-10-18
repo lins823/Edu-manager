@@ -1,0 +1,73 @@
+{% extends "base.html" %}{% block title %}Boarding Master{% endblock %}
+{% block content %}
+<div class="row jb mb2">
+  <div><div class="ptitle">🛏 Boarding Master</div><div class="ts tm mt1">Hostel management &amp; student allocation</div></div>
+  <form class="row g1" action="{{ url_for('boarding_dash') }}" method="GET">
+    <input name="q" placeholder="Search boarder…" value="{{ request.args.get('q','') }}" style="width:200px">
+    <button class="btn bn sm" type="submit">🔍</button>
+  </form>
+</div>
+{% if search is not none %}
+<div class="card mb2"><div class="stitle mb2">🔍 Results</div>
+<div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Class</th><th>Hostel</th><th>Blood Grp</th><th>Health</th></tr></thead>
+<tbody>{% for s in search %}<tr><td><strong>{{s.admission_number}}</strong></td><td>{{s.first_name}} {{s.last_name}}</td>
+<td class="ts">{{s.cls or '—'}}</td><td class="ts">{{s.hostel or '—'}}</td>
+<td>{{s.blood_group or '—'}}</td><td>{{s.health_condition or '—'}}</td></tr>
+{% else %}<tr><td colspan="6" class="tc tm" style="padding:1.5rem">No results</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+<div class="stats">
+  {% for h in hostels %}<div class="stat"><div class="sic {{ 'ic-b' if h.gender=='male' else 'ic-g' }}">{{ '♂' if h.gender=='male' else '♀' }}</div>
+  <div><div class="sv">{{h.current_occupancy}}/{{h.capacity}}</div><div class="sl">{{h.name}}</div><div class="ss">{{ h.capacity-h.current_occupancy }} free</div></div></div>{% endfor %}
+</div>
+<div class="tabs">
+  <button class="tab on" data-t="bm-h">🏠 Hostels</button>
+  <button class="tab" data-t="bm-b">👨‍🎓 All Boarders</button>
+  <button class="tab" data-t="bm-r">🔄 Relocate</button>
+</div>
+<div>
+<div class="pane on" id="bm-h">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
+    {% for h in hostels %}
+    <div class="card">
+      <div class="row jb mb1">
+        <div><div class="fw6">{{h.name}}</div><div class="ts tm">{{ '♂ Boys' if h.gender=='male' else '♀ Girls' }}</div></div>
+        <span class="bx {{ 'bx-active' if h.current_occupancy<h.capacity else 'bx-inactive' }}">{{ h.capacity-h.current_occupancy }} free</span>
+      </div>
+      <div class="pr mt1 mb1"><div class="prb" data-v="{{ (h.current_occupancy/h.capacity*100)|round(1) if h.capacity else 0 }}"></div></div>
+      <div class="row jb ts tm"><span>{{h.current_occupancy}} occupied</span><span>Cap: {{h.capacity}}</span></div>
+      <div class="divider" style="margin:.75rem 0"></div>
+      {% set hb = boarders|selectattr('hid','equalto',h.id)|list %}
+      <div class="ts tm fw6 mb1">{{ hb|length }} residents</div>
+      <div style="max-height:170px;overflow-y:auto">
+        {% for b in hb %}<div class="row jb ts" style="padding:.25rem 0;border-bottom:1px solid var(--bd)"><span>{{b.first_name}} {{b.last_name}}</span><span class="tx tm">{{b.admission_number}}</span></div>
+        {% else %}<div class="tc tm ts" style="padding:.75rem">Empty</div>{% endfor %}
+      </div>
+    </div>{% else %}<div class="empty"><div class="ei">🏠</div><p>No hostels</p></div>{% endfor %}
+  </div>
+</div>
+<div class="pane" id="bm-b">
+  <div class="card">
+    <div class="stitle mb2">👨‍🎓 All Boarders</div>
+    <div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Gender</th><th>Class</th><th>Hostel</th><th>Blood Grp</th><th>Health</th><th>Status</th></tr></thead>
+    <tbody>{% for s in boarders %}<tr>
+    <td><strong>{{s.admission_number}}</strong></td><td>{{s.first_name}} {{s.last_name}}</td>
+    <td>{{s.gender|title}}</td><td class="ts">{{s.cls or '—'}}</td>
+    <td class="ts">{% if s.hostel %}<span class="bx bx-navy">{{s.hostel}}</span>{% else %}<span class="bx bx-inactive">Unassigned</span>{% endif %}</td>
+    <td>{{s.blood_group or '—'}}</td>
+    <td class="ts">{% if s.health_condition %}<span class="bx bx-pending" title="{{s.health_condition}}">⚕️</span>{% endif %}{% if s.special_diet %}<span class="bx bx-gold" title="{{s.special_diet}}">🍽</span>{% endif %}{% if not s.health_condition and not s.special_diet %}—{% endif %}</td>
+    <td><span class="bx bx-{{s.status}}">{{s.status}}</span></td>
+    </tr>{% else %}<tr><td colspan="8" class="tc tm" style="padding:2rem">No boarders</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+<div class="pane" id="bm-r">
+  <div class="card" style="max-width:540px">
+    <div class="stitle mb2">🔄 Relocate Student</div>
+    <div class="al al-info mb2"><span>ℹ️</span> Students are auto-assigned on registration. Use this to manually move them.</div>
+    <form method="POST" action="{{ url_for('boarding_relocate') }}">
+      <div class="fg"><label>Select Student *</label><select name="student_id" required><option value="">— Select boarder —</option>{% for s in boarders %}<option value="{{s.id}}">{{s.admission_number}} — {{s.first_name}} {{s.last_name}} ({{s.hostel or 'unassigned'}})</option>{% endfor %}</select></div>
+      <div class="fg"><label>Move to Hostel *</label><select name="new_hostel_id" required><option value="">— Select hostel —</option>{% for h in hostels %}<option value="{{h.id}}" {{ 'disabled' if h.current_occupancy>=h.capacity }}>{{h.name}} ({{ '♂' if h.gender=='male' else '♀' }}) — {{h.current_occupancy}}/{{h.capacity}}{{ ' FULL' if h.current_occupancy>=h.capacity else '' }}</option>{% endfor %}</select></div>
+      <button class="btn bg mt1" type="submit">🔄 Relocate</button>
+    </form>
+  </div>
+</div>
+</div>
+{% endblock %}

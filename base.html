@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}SMS{% endblock %} — {{ settings.school_name }}</title>
+<link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}">
+</head>
+<body>
+<div class="wrap">
+<!-- SIDEBAR -->
+<aside class="sb" id="sidebar">
+  <div class="sb-brand">
+    {% if settings.logo_path %}
+    <img src="/{{ settings.logo_path }}" class="sb-logo" alt="Logo" onerror="this.style.display='none'">
+    {% else %}
+    <div class="sb-logo" style="background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-weight:700;font-size:1.1rem;color:var(--navy)">EA</div>
+    {% endif %}
+    <div>
+      <div class="sb-name">{{ settings.school_name }}</div>
+      <div class="sb-motto">{{ settings.school_motto }}</div>
+    </div>
+  </div>
+  <div class="sb-user">
+    <div class="sb-av">{{ session.username[0]|upper if session.username else 'U' }}</div>
+    <div>
+      <div class="sb-uname">{{ session.username }}</div>
+      <div class="sb-role">{{ (session.role or '').replace('_',' ') }}</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    {% set r = session.role %}
+    {% if r == 'admin' %}
+      <div class="sb-lbl">Administration</div>
+      <a class="nl" href="{{ url_for('admin_dash') }}">🏠 Dashboard</a>
+      <a class="nl" href="{{ url_for('admin_dash') }}#t-users">👥 Users</a>
+      <a class="nl" href="{{ url_for('admin_dash') }}#t-classes">🏫 Classes</a>
+      <a class="nl" href="{{ url_for('admin_dash') }}#t-hostels">🏠 Hostels</a>
+      <a class="nl" href="{{ url_for('admin_dash') }}#t-terms">📅 Terms</a>
+      <a class="nl" href="{{ url_for('admin_dash') }}#t-brand">🎨 Branding</a>
+    {% elif r == 'principal' %}
+      <div class="sb-lbl">Principal</div>
+      <a class="nl" href="{{ url_for('principal_dash') }}">🏠 Dashboard</a>
+      <a class="nl" href="{{ url_for('principal_dash') }}?q=">🔍 Search Students</a>
+      <a class="nl" href="{{ url_for('principal_dash') }}#p-fin">💰 Finance</a>
+      <a class="nl" href="{{ url_for('principal_dash') }}#p-ac">📊 Academics</a>
+      <a class="nl" href="{{ url_for('principal_dash') }}#p-staff">👔 Staff</a>
+    {% elif r == 'deputy_principal' %}
+      <div class="sb-lbl">Deputy Principal</div>
+      <a class="nl" href="{{ url_for('deputy_dash') }}">🏠 Dashboard</a>
+      <a class="nl" href="{{ url_for('deputy_dash') }}#d-add">➕ Add Record</a>
+      <a class="nl" href="{{ url_for('deputy_dash') }}#d-rec">📋 Records</a>
+      <a class="nl" href="{{ url_for('deputy_dash') }}#d-sus">🚫 Suspended</a>
+    {% elif r == 'teacher' %}
+      <div class="sb-lbl">Teacher</div>
+      <a class="nl" href="{{ url_for('teacher_dash') }}">🏠 Dashboard</a>
+      <a class="nl" href="{{ url_for('teacher_dash') }}#t-cls">👥 My Class</a>
+      <a class="nl" href="{{ url_for('teacher_dash') }}#t-att">✅ Attendance</a>
+      <a class="nl" href="{{ url_for('teacher_dash') }}#t-mk">📝 Marks</a>
+      <a class="nl" href="{{ url_for('teacher_dash') }}#t-fee">💵 Fee Statements</a>
+    {% elif r == 'boarding_master' %}
+      <div class="sb-lbl">Boarding</div>
+      <a class="nl" href="{{ url_for('boarding_dash') }}">🏠 Dashboard</a>
+      <a class="nl" href="{{ url_for('boarding_dash') }}#bm-h">🛏 Hostels</a>
+      <a class="nl" href="{{ url_for('boarding_dash') }}#bm-b">👨‍🎓 Boarders</a>
+      <a class="nl" href="{{ url_for('boarding_dash') }}#bm-r">🔄 Relocate</a>
+    {% elif r == 'bursar' %}
+      <div class="sb-lbl">Bursar</div>
+      <a class="nl" href="{{ url_for('bursar_dash') }}">🏠 Dashboard</a>
+      <a class="nl" href="{{ url_for('bursar_dash') }}#b-reg">➕ Register Student</a>
+      <a class="nl" href="{{ url_for('bursar_dash') }}#b-fees">💰 Fees</a>
+      <a class="nl" href="{{ url_for('bursar_dash') }}#b-req">📋 Requests</a>
+    {% elif r == 'parent' %}
+      <div class="sb-lbl">Parent Portal</div>
+      <a class="nl" href="{{ url_for('parent_dash') }}">🏠 My Children</a>
+    {% endif %}
+  </nav>
+  <div class="sb-ft"><a href="{{ url_for('logout') }}" data-cf="Sign out?">🚪 Sign Out</a></div>
+</aside>
+<div class="sb-ov" id="sb-ov"></div>
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="row g1">
+      <button class="hbg" id="hbg">☰</button>
+      {% if session.role != 'parent' %}
+      {% set _dash_map = {'admin':'admin_dash','principal':'principal_dash','deputy_principal':'deputy_dash','teacher':'teacher_dash','boarding_master':'boarding_dash','bursar':'bursar_dash'} %}
+      <form class="srch" action="{{ url_for(_dash_map[session.role]) if session.role in _dash_map else '#' }}" method="GET">
+        <span style="color:var(--muted);font-size:.85rem">🔍</span>
+        <input name="q" placeholder="Search student by name or admission no…" value="{{ request.args.get('q','') }}">
+      </form>
+      {% endif %}
+    </div>
+    <div class="topbar-r">
+      {% if term %}<span class="chip">📅 {{ term['name'] }}</span>{% endif %}
+      <span class="chip">{{ (session.role or '').replace('_',' ') }}</span>
+    </div>
+  </header>
+  <div class="fmsg">
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat,msg in msgs %}
+    <div class="al al-{{ cat }}"><span>{% if cat=='success' %}✅{% elif cat=='error' %}❌{% elif cat=='warning' %}⚠️{% else %}ℹ️{% endif %}</span>{{ msg }}</div>
+    {% endfor %}{% endwith %}
+  </div>
+  <main class="page">{% block content %}{% endblock %}</main>
+</div>
+</div>
+<script src="{{ url_for('static',filename='js/main.js') }}"></script>
+</body></html>

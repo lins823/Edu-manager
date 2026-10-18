@@ -1,0 +1,207 @@
+{% extends "base.html" %}{% block title %}Bursar{% endblock %}
+{% block content %}
+<div class="row jb mb2">
+  <div><div class="ptitle">💰 Bursar Office</div><div class="ts tm mt1">Student registration, fee management &amp; request approvals</div></div>
+  <form class="row g1" action="{{ url_for('bursar_dash') }}" method="GET">
+    <input name="q" placeholder="Search by name or adm. no…" value="{{ request.args.get('q','') }}" style="width:240px">
+    <button class="btn bn sm" type="submit">🔍 Search</button>
+  </form>
+</div>
+
+{% if search is not none %}
+<div class="card mb2">
+  <div class="stitle mb2">🔍 Search Results ({{ search|length }})</div>
+  {% if search %}
+  <div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Class</th><th>Status</th><th>Total</th><th>Paid</th><th>Balance</th><th>Action</th></tr></thead>
+  <tbody>{% for s in search %}
+  <tr>
+    <td><strong>{{s.admission_number}}</strong></td>
+    <td>{{s.first_name}} {{s.last_name}}</td>
+    <td class="ts">{{s.cls or '—'}}</td>
+    <td><span class="bx bx-{{s.status}}">{{s.status}}</span></td>
+    <td>{% if s.total_amount %}KES {{ "{:,.0f}".format(s.total_amount) }}{% else %}—{% endif %}</td>
+    <td class="t-g fw6">{% if s.amount_paid %}KES {{ "{:,.0f}".format(s.amount_paid) }}{% else %}—{% endif %}</td>
+    <td class="{{ 't-r' if s.balance and s.balance>0 else 't-g' }} fw6">{% if s.balance is not none %}KES {{ "{:,.0f}".format(s.balance) }}{% else %}—{% endif %}</td>
+    <td><button class="btn bg xs" onclick="openFees({{s.id}},'{{s.first_name}} {{s.last_name}}')" type="button">💰 Update</button></td>
+  </tr>
+  {% endfor %}</tbody></table></div>
+  {% else %}<div class="empty"><div class="ei">🔍</div><p>No students found</p></div>{% endif %}
+</div>
+{% endif %}
+
+<div class="stats">
+  <div class="stat"><div class="sic ic-n">👨‍🎓</div><div><div class="sv">{{ fees|length }}</div><div class="sl">Students</div></div></div>
+  {% set tp = namespace(n=0) %}{% for r in fees %}{% if r.amount_paid %}{% set tp.n = tp.n + r.amount_paid %}{% endif %}{% endfor %}
+  <div class="stat"><div class="sic ic-g">💰</div><div><div class="sv">KES {{ "{:,.0f}".format(tp.n) }}</div><div class="sl">Fees Collected</div></div></div>
+  <div class="stat"><div class="sic ic-r">📋</div><div><div class="sv">{{ reqs|length }}</div><div class="sl">Pending Requests</div></div></div>
+  <div class="stat"><div class="sic ic-gr">✅</div><div><div class="sv">{{ fees|selectattr('status','equalto','active')|list|length }}</div><div class="sl">Active Students</div></div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab on" data-t="b-reg">➕ Register Student</button>
+  <button class="tab" data-t="b-fees">💰 Fee Records</button>
+  <button class="tab" data-t="b-req">📋 Requests</button>
+  <button class="tab" data-t="b-all">👥 All Students</button>
+</div>
+<div>
+
+<!-- REGISTER STUDENT -->
+<div class="pane on" id="b-reg">
+  <div class="card">
+    <div class="stitle mb2">➕ Register New Student</div>
+    <div class="al al-info mb2"><span>ℹ️</span> Minimum <strong>1 parent required</strong>, maximum 2. Hostel is auto-assigned by gender unless overridden.</div>
+    <form method="POST" action="{{ url_for('bursar_register') }}">
+
+      <div class="fw6 mb1" style="color:var(--navy)">📋 Student Bio Data</div>
+      <div class="g3">
+        <div class="fg"><label>Admission No. *</label><input name="admission_number" required placeholder="ADM2025001"></div>
+        <div class="fg"><label>First Name *</label><input name="first_name" required placeholder="First"></div>
+        <div class="fg"><label>Middle Name</label><input name="middle_name" placeholder="Middle (optional)"></div>
+        <div class="fg"><label>Last Name *</label><input name="last_name" required placeholder="Last"></div>
+        <div class="fg"><label>Date of Birth</label><input name="dob" type="date"></div>
+        <div class="fg"><label>Gender *</label><select name="gender" required><option value="">— Select —</option><option value="male">Male</option><option value="female">Female</option></select></div>
+        <div class="fg"><label>Class / Stream</label><select name="stream_id"><option value="">— Select —</option>{% for s in streams %}<option value="{{s.id}}">{{s.full}}</option>{% endfor %}</select></div>
+        <div class="fg"><label>Blood Group</label><select name="blood_group"><option value="">—</option>{% for bg in ['A+','A-','B+','B-','AB+','AB-','O+','O-'] %}<option>{{bg}}</option>{% endfor %}</select></div>
+        <div class="fg"><label>Hostel Override <span class="ts tm">(blank=auto)</span></label><select name="hostel_id"><option value="">Auto-assign</option>{% for h in hostels %}<option value="{{h.id}}" {{ 'disabled' if h.current_occupancy>=h.capacity }}>{{h.name}} ({{ '♂' if h.gender=='male' else '♀' }}) — {{h.capacity-h.current_occupancy}} free</option>{% endfor %}</select></div>
+        <div class="fg full"><label>Health Condition</label><input name="health_condition" placeholder="Any known conditions…"></div>
+        <div class="fg full"><label>Special Diet</label><input name="special_diet" placeholder="e.g. Vegetarian, Diabetic…"></div>
+        <div class="fg full"><label>Disability / Special Needs</label><input name="disability" placeholder="e.g. Visual impairment…"></div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="fw6 mb1" style="color:var(--navy)">👨‍👩‍👧 Parent / Guardian 1 (Primary) *</div>
+      <div class="g3">
+        <div class="fg"><label>Relationship *</label><select name="p1_rel"><option value="father">Father</option><option value="mother">Mother</option><option value="guardian">Guardian</option></select></div>
+        <div class="fg"><label>First Name *</label><input name="p1_fn" required placeholder="First name"></div>
+        <div class="fg"><label>Last Name *</label><input name="p1_ln" required placeholder="Last name"></div>
+        <div class="fg"><label>Phone *</label><input name="p1_phone" required placeholder="+254…"></div>
+        <div class="fg"><label>Email</label><input name="p1_email" type="email" placeholder="email@example.com"></div>
+        <div class="fg"><label>Login Username *</label><input name="p1_user" required placeholder="e.g. parent.john2025"></div>
+        <div class="fg full"><label>Login Password *</label><div class="pw"><input name="p1_pass" type="password" required placeholder="Set parent's portal password"><button type="button" class="pwt">👁</button></div></div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="row g1 mb2">
+        <div class="fw6" style="color:var(--navy)">👤 Parent / Guardian 2 (Optional)</div>
+        <button type="button" id="p2btn" class="btn bo sm">+ Add Second Parent</button>
+      </div>
+      <div id="p2sec" style="display:none">
+        <div class="g3">
+          <div class="fg"><label>Relationship</label><select name="p2_rel"><option value="father">Father</option><option value="mother">Mother</option><option value="guardian">Guardian</option></select></div>
+          <div class="fg"><label>First Name</label><input name="p2_fn" placeholder="First name"></div>
+          <div class="fg"><label>Last Name</label><input name="p2_ln" placeholder="Last name"></div>
+          <div class="fg"><label>Phone</label><input name="p2_phone" placeholder="+254…"></div>
+          <div class="fg"><label>Email</label><input name="p2_email" type="email" placeholder="email@example.com"></div>
+          <div class="fg"><label>Login Username</label><input name="p2_user" placeholder="username"></div>
+          <div class="fg full"><label>Login Password</label><div class="pw"><input name="p2_pass" type="password" placeholder="Portal password"><button type="button" class="pwt">👁</button></div></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="fw6 mb1" style="color:var(--navy)">💰 Initial Fee Setting</div>
+      <div class="g3">
+        <div class="fg"><label>Total Fees *</label><input name="total_fees" type="number" step="0.01" placeholder="45000.00" required></div>
+        <div class="fg"><label>Amount Paid Now</label><input name="initial_paid" type="number" step="0.01" value="0"></div>
+        <div class="fg"><label>Payment Method</label><select name="pay_method"><option value="cash">Cash</option><option value="bank_transfer">Bank Transfer</option><option value="mpesa">M-Pesa</option><option value="cheque">Cheque</option></select></div>
+      </div>
+
+      <button class="btn bg mt2" style="padding:.65rem 2.2rem;font-size:.95rem" type="submit">✅ Register Student</button>
+    </form>
+  </div>
+</div>
+
+<!-- FEE RECORDS -->
+<div class="pane" id="b-fees">
+  <div class="card">
+    <div class="card-hd">
+      <div class="stitle" style="border:none;padding:0;margin:0">💰 Fee Records</div>
+      <button class="btn bg sm" data-m="m-fees">+ Update Fee</button>
+    </div>
+    <div class="tw"><table><thead><tr><th>Student</th><th>Class</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>{% for r in fees %}
+    <tr>
+      <td><strong>{{r.sname}}</strong><br><span class="tx tm">{{r.admission_number}}</span></td>
+      <td class="ts">{{r.cls or '—'}}</td>
+      <td>{% if r.total_amount %}KES {{ "{:,.0f}".format(r.total_amount) }}{% else %}—{% endif %}</td>
+      <td class="t-g fw6">{% if r.amount_paid %}KES {{ "{:,.0f}".format(r.amount_paid) }}{% else %}—{% endif %}</td>
+      <td class="{{ 't-r' if r.balance and r.balance>0 else 't-g' }} fw6">{% if r.balance is not none %}KES {{ "{:,.0f}".format(r.balance) }}{% else %}—{% endif %}</td>
+      <td>{% if r.balance is not none %}{% if r.balance<=0 %}<span class="bx bx-active">Cleared</span>{% elif r.amount_paid and r.amount_paid>0 %}<span class="bx bx-gold">Partial</span>{% else %}<span class="bx bx-inactive">Unpaid</span>{% endif %}{% else %}<span class="bx bx-inactive">No record</span>{% endif %}</td>
+      <td><button class="btn bg xs" onclick="openFees({{r.id}},'{{r.sname}}')" type="button">Update</button></td>
+    </tr>
+    {% else %}<tr><td colspan="7" class="tc tm" style="padding:2rem">No records</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+
+<!-- REQUESTS -->
+<div class="pane" id="b-req">
+  <div class="card">
+    <div class="stitle mb2">📋 Pending Add/Remove Requests</div>
+    {% if reqs %}
+    <div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Student</th><th>Requested By</th><th>Reason</th><th>Actions</th></tr></thead>
+    <tbody>{% for r in reqs %}
+    <tr>
+      <td class="ts">{{r.request_date[:10] if r.request_date else '—'}}</td>
+      <td><span class="bx {{ 'bx-active' if r.request_type=='add' else 'bx-expelled' }}">{{r.request_type}}</span></td>
+      <td>{{r.sname or '—'}}</td>
+      <td class="ts">{{r.rname or '—'}}</td>
+      <td class="ts">{{r.reason or '—'}}</td>
+      <td class="row g1">
+        <a href="{{ url_for('bursar_review', rid=r.id, action='approved') }}" class="btn bs xs" data-cf="Approve this request?">✅ Approve</a>
+        <a href="{{ url_for('bursar_review', rid=r.id, action='rejected') }}" class="btn bd_ xs" data-cf="Reject this request?">❌ Reject</a>
+      </td>
+    </tr>
+    {% endfor %}</tbody></table></div>
+    {% else %}<div class="empty"><div class="ei">✅</div><p>No pending requests</p></div>{% endif %}
+  </div>
+</div>
+
+<!-- ALL STUDENTS -->
+<div class="pane" id="b-all">
+  <div class="card">
+    <div class="stitle mb2">👥 All Students</div>
+    <div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Gender</th><th>Class</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>{% for r in fees %}
+    <tr>
+      <td><strong>{{r.admission_number}}</strong></td>
+      <td>{{r.sname}}</td>
+      <td>—</td>
+      <td class="ts">{{r.cls or '—'}}</td>
+      <td><span class="bx bx-{{r.status}}">{{r.status}}</span></td>
+      <td><button class="btn bg xs" onclick="openFees({{r.id}},'{{r.sname}}')" type="button">💰 Fees</button></td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="tc tm" style="padding:2rem">No students</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+</div>
+
+<!-- UPDATE FEES MODAL -->
+<div class="mo" id="m-fees">
+  <div class="md">
+    <div class="md-hd"><h3>Update Student Fees</h3><button class="md-x">✕</button></div>
+    <form method="POST" action="{{ url_for('bursar_update_fees') }}">
+      <div class="md-bd">
+        <p id="fees-name" class="fw6 mb2" style="color:var(--navy)"></p>
+        <input type="hidden" name="student_id" id="fees-sid">
+        <div class="g2">
+          <div class="fg"><label>Total Fee Amount *</label><input name="total_amount" type="number" step="0.01" required placeholder="45000.00"></div>
+          <div class="fg"><label>New Payment</label><input name="payment" type="number" step="0.01" value="0" placeholder="0.00"></div>
+          <div class="fg"><label>Payment Method</label><select name="pay_method"><option value="cash">Cash</option><option value="bank_transfer">Bank Transfer</option><option value="mpesa">M-Pesa</option><option value="cheque">Cheque</option></select></div>
+          <div class="fg"><label>Receipt No.</label><input name="receipt" placeholder="REC-001"></div>
+        </div>
+      </div>
+      <div class="md-ft">
+        <button type="button" class="btn bo" data-mc>Cancel</button>
+        <button type="submit" class="btn bg">💾 Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openFees(id, name) {
+  document.getElementById('fees-sid').value = id;
+  document.getElementById('fees-name').textContent = 'Student: ' + name;
+  document.getElementById('m-fees').classList.add('open');
+}
+</script>
+{% endblock %}

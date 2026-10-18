@@ -1,0 +1,79 @@
+{% extends "base.html" %}{% block title %}Principal{% endblock %}
+{% block content %}
+<div class="row jb mb2">
+  <div><div class="ptitle">📋 Principal Dashboard</div><div class="ts tm mt1">{% if term %}{{ term['name'] }} — {{ term['academic_year'] }}{% else %}No active term{% endif %}</div></div>
+  <form class="row g1" action="{{ url_for('principal_dash') }}" method="GET">
+    <input name="q" placeholder="Search student…" value="{{ request.args.get('q','') }}" style="width:200px">
+    <button class="btn bn sm" type="submit">🔍 Search</button>
+  </form>
+</div>
+{% if search is not none %}
+<div class="card mb2">
+  <div class="stitle mb2">🔍 Results ({{ search|length }})</div>
+  {% if search %}
+  <div class="tw"><table><thead><tr><th>Adm No.</th><th>Name</th><th>Class</th><th>Status</th><th>Action</th></tr></thead>
+  <tbody>{% for s in search %}
+  <tr><td><strong>{{s.admission_number}}</strong></td><td>{{s.first_name}} {{s.last_name}}</td>
+  <td class="ts">{{s.cls or '—'}}</td>
+  <td><span class="bx bx-{{s.status}}">{{s.status}}</span></td>
+  <td>{% if s.status=='inactive' %}<a href="{{ url_for('principal_reactivate',sid=s.id) }}" class="btn bs xs" data-cf="Reactivate this student?">✅ Reactivate</a>{% else %}—{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div>
+  {% else %}<div class="empty"><div class="ei">🔍</div><p>No students found</p></div>{% endif %}
+</div>
+{% endif %}
+<div class="stats">
+  {% set total_s = namespace(n=0) %}{% for r in fin %}{% set total_s.n = total_s.n + r.cnt %}{% endfor %}
+  <div class="stat"><div class="sic ic-n">👨‍🎓</div><div><div class="sv">{{ total_s.n }}</div><div class="sl">Students</div></div></div>
+  {% set total_p = namespace(n=0) %}{% for r in fin %}{% set total_p.n = total_p.n + r.paid %}{% endfor %}
+  <div class="stat"><div class="sic ic-g">💰</div><div><div class="sv">{{ "{:,.0f}".format(total_p.n) }}</div><div class="sl">Fees Collected</div></div></div>
+  <div class="stat"><div class="sic ic-r">⚠️</div><div><div class="sv">{{ disc_count }}</div><div class="sl">Discipline Records</div></div></div>
+  <div class="stat"><div class="sic ic-gr">👔</div><div><div class="sv">{{ staff|length }}</div><div class="sl">Staff</div></div></div>
+</div>
+<div class="tabs">
+  <button class="tab on" data-t="p-fin">💰 Financial</button>
+  <button class="tab" data-t="p-ac">📊 Academics</button>
+  <button class="tab" data-t="p-staff">👔 Staff</button>
+</div>
+<div>
+<div class="pane on" id="p-fin">
+  <div class="card">
+    <div class="stitle mb2">💰 Fee Collection by Class</div>
+    <div class="tw"><table><thead><tr><th>Class</th><th>Students</th><th>Total Fees</th><th>Collected</th><th>Outstanding</th><th>Rate</th></tr></thead>
+    <tbody>{% set gt = namespace(tot=0, paid=0) %}{% for r in fin %}
+    {% set pct = ((r.paid / r.total * 100) | round(1)) if r.total else 0 %}
+    {% set gt.tot = gt.tot + r.total %}{% set gt.paid = gt.paid + r.paid %}
+    <tr><td><strong>{{ r.cls }}</strong></td><td>{{ r.cnt }}</td>
+    <td>KES {{ "{:,.0f}".format(r.total) }}</td>
+    <td class="t-g fw6">KES {{ "{:,.0f}".format(r.paid) }}</td>
+    <td class="t-r fw6">KES {{ "{:,.0f}".format(r.bal) }}</td>
+    <td><div class="row g1"><div class="pr" style="width:70px"><div class="prb" data-v="{{ pct }}"></div></div><span class="ts">{{ pct }}%</span></div></td>
+    </tr>{% else %}<tr><td colspan="6" class="tc tm" style="padding:2rem">No financial data</td></tr>{% endfor %}</tbody>
+    {% if fin %}<tfoot><tr><td colspan="2"><strong>TOTAL</strong></td>
+    <td><strong>KES {{ "{:,.0f}".format(gt.tot) }}</strong></td>
+    <td><strong>KES {{ "{:,.0f}".format(gt.paid) }}</strong></td>
+    <td><strong>KES {{ "{:,.0f}".format(gt.tot - gt.paid) }}</strong></td>
+    <td><strong>{{ "{:.1f}".format((gt.paid / gt.tot * 100) if gt.tot else 0) }}%</strong></td></tr></tfoot>{% endif %}
+    </table></div>
+  </div>
+</div>
+<div class="pane" id="p-ac">
+  <div class="card">
+    <div class="stitle mb2">📊 Academic Performance</div>
+    <div class="tw"><table><thead><tr><th>Class</th><th>Subject</th><th>Avg Score</th><th>Grade</th><th>Bar</th></tr></thead>
+    <tbody>{% for r in acad %}
+    <tr><td><strong>{{r.cls}}</strong></td><td>{{r.subject}}</td><td>{{r.avg}}/100</td>
+    <td><span class="bx {{ 'bx-active' if r.avg>=70 else ('bx-gold' if r.avg>=50 else 'bx-inactive') }}">{{ 'A' if r.avg>=80 else ('B' if r.avg>=70 else ('C' if r.avg>=60 else ('D' if r.avg>=50 else 'F'))) }}</span></td>
+    <td><div class="pr" style="width:100px"><div class="prb" data-v="{{r.avg}}"></div></div></td>
+    </tr>{% else %}<tr><td colspan="5" class="tc tm" style="padding:2rem">No exam data</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+<div class="pane" id="p-staff">
+  <div class="card">
+    <div class="stitle mb2">👔 All Staff (Read-Only)</div>
+    <div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th></tr></thead>
+    <tbody>{% for s in staff %}<tr><td><strong>{{s.name}}</strong></td><td><span class="bx bx-navy">{{s.role.replace('_',' ')}}</span></td><td class="ts">{{s.email or '—'}}</td><td class="ts">{{s.phone or '—'}}</td></tr>
+    {% else %}<tr><td colspan="4" class="tc tm" style="padding:2rem">No staff records</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</div>
+</div>
+{% endblock %}

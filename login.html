@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign In — {{ settings.school_name }}</title>
+<link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}">
+</head>
+<body>
+<div class="lp">
+  <!-- LEFT PANEL -->
+  <div class="ll">
+    {% if settings.logo_path %}
+    <img class="lemb" src="/{{ settings.logo_path }}" alt="Logo">
+    {% else %}
+    <div class="lemb-ph">EA</div>
+    {% endif %}
+    <div class="lsn">{{ settings.school_name }}</div>
+    <div class="lmt">"{{ settings.school_motto }}"</div>
+    <p class="ltag">A unified management platform for students, staff and parents. Secure, reliable, and built for excellence.</p>
+    <div class="ldots"><span></span><span></span><span></span><span></span><span></span></div>
+
+    <!-- Decorative stats -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-top:2.5rem;max-width:280px;width:100%">
+      {% for label,val in [('Students Enrolled','450+'),('Classes','16'),('Staff Members','42'),('Academic Years','12+')] %}
+      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(200,146,10,.18);border-radius:10px;padding:.75rem;text-align:center">
+        <div style="font-family:var(--fh);font-size:1.3rem;font-weight:700;color:var(--goldlt)">{{ val }}</div>
+        <div style="font-size:.68rem;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em;margin-top:.15rem">{{ label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL — FORM -->
+  <div class="lr">
+    <div class="lf">
+      <div class="lft">Welcome back</div>
+      <div class="lfs">Sign in to your account to continue</div>
+
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat,msg in msgs %}
+      <div class="al al-{{ cat }}" style="margin-bottom:1rem">
+        <span>{% if cat=='success' %}✅{% elif cat=='error' %}❌{% else %}ℹ️{% endif %}</span>{{ msg }}
+      </div>
+      {% endfor %}{% endwith %}
+
+      <form method="POST" action="{{ url_for('login') }}">
+        <div class="fg">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" placeholder="Enter your username" required autofocus autocomplete="username">
+        </div>
+        <div class="fg">
+          <label for="password">Password</label>
+          <div class="pw">
+            <input id="password" name="password" type="password" placeholder="Enter your password" required autocomplete="current-password">
+            <button type="button" class="pwt" title="Show password">👁</button>
+          </div>
+        </div>
+        <button type="submit" class="lsub">Sign In →</button>
+      </form>
+
+      <div style="margin-top:1.8rem;padding:1rem;background:var(--ivory);border:1px solid var(--bd);border-radius:10px;font-size:.78rem;color:var(--slate);text-align:center">
+        <span style="font-weight:600;color:var(--navy)">Need your login credentials?</span><br>
+        Contact your system administrator or refer to the <em>credentials.txt</em> file provided during setup.
+      </div>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static',filename='js/main.js') }}"></script>
+</body></html>
